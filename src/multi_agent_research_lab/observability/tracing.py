@@ -10,12 +10,12 @@ from time import perf_counter
 from typing import Any
 
 
-@contextmanager
-def trace_span(name: str, attributes: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
-    """Minimal span context used by the skeleton.
+from multi_agent_research_lab.core.state import ResearchState
 
-    TODO(student): Replace or augment with LangSmith/Langfuse provider spans.
-    """
+
+@contextmanager
+def trace_span(name: str, state: ResearchState | None = None, attributes: dict[str, Any] | None = None) -> Iterator[dict[str, Any]]:
+    """Minimal span context used by the skeleton."""
 
     started = perf_counter()
     span: dict[str, Any] = {"name": name, "attributes": attributes or {}, "duration_seconds": None}
@@ -23,3 +23,5 @@ def trace_span(name: str, attributes: dict[str, Any] | None = None) -> Iterator[
         yield span
     finally:
         span["duration_seconds"] = perf_counter() - started
+        if state:
+            state.add_trace_event(name, span)
