@@ -45,7 +45,11 @@ class ResearcherAgent(BaseAgent):
         # 3. Update state
         state.research_notes = (state.research_notes or "") + "\n" + response.content
         state.agent_results.append(
-            AgentResult(agent=AgentName.RESEARCHER, content=response.content)
+            AgentResult(
+                agent=AgentName.RESEARCHER, 
+                content=response.content,
+                metadata={"source_count": len(results)}
+            )
         )
         
         return state

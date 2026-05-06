@@ -5,6 +5,7 @@ Production note: agents should depend on this interface instead of importing an 
 
 from dataclasses import dataclass
 from openai import OpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
 from multi_agent_research_lab.core.config import get_settings
 
 
@@ -21,19 +22,25 @@ class LLMClient:
 
     def __init__(self) -> None:
         self.settings = get_settings()
-        self.client = OpenAI(api_key=self.settings.openai_api_key)
+        api_key = self.settings.openai_api_key
+        if api_key:
+            self.client = OpenAI(api_key=api_key)
+        else:
+            self.client = OpenAI()
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+    )
     def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        """Return a model completion.
-
-        Keep retry, timeout, and token logging here rather than inside agents.
-        """
+        """Return a model completion with retry and timeout."""
         response = self.client.chat.completions.create(
             model=self.settings.openai_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            timeout=self.settings.timeout_seconds
         )
 
         content = response.choices[0].message.content or ""

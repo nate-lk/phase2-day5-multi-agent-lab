@@ -11,6 +11,7 @@ from multi_agent_research_lab.agents.critic import CriticAgent
 from multi_agent_research_lab.core.state import ResearchState
 from multi_agent_research_lab.services.llm_client import LLMClient
 from multi_agent_research_lab.services.search_client import SearchClient
+from multi_agent_research_lab.observability.tracing import trace_span
 
 
 class MultiAgentWorkflow:
@@ -25,6 +26,26 @@ class MultiAgentWorkflow:
         self.analyst = AnalystAgent(self.llm_client)
         self.writer = WriterAgent(self.llm_client)
         self.critic = CriticAgent(self.llm_client)
+
+    def _run_supervisor(self, state: ResearchState) -> ResearchState:
+        with trace_span("supervisor", state=state):
+            return self.supervisor.run(state)
+
+    def _run_researcher(self, state: ResearchState) -> ResearchState:
+        with trace_span("researcher", state=state):
+            return self.researcher.run(state)
+
+    def _run_analyst(self, state: ResearchState) -> ResearchState:
+        with trace_span("analyst", state=state):
+            return self.analyst.run(state)
+
+    def _run_writer(self, state: ResearchState) -> ResearchState:
+        with trace_span("writer", state=state):
+            return self.writer.run(state)
+
+    def _run_critic(self, state: ResearchState) -> ResearchState:
+        with trace_span("critic", state=state):
+            return self.critic.run(state)
 
     def _get_next_step(self, state: ResearchState) -> str:
         """Helper for conditional routing."""
@@ -41,11 +62,11 @@ class MultiAgentWorkflow:
         workflow = StateGraph(ResearchState)
 
         # Define nodes
-        workflow.add_node("supervisor", self.supervisor.run)
-        workflow.add_node("researcher", self.researcher.run)
-        workflow.add_node("analyst", self.analyst.run)
-        workflow.add_node("writer", self.writer.run)
-        workflow.add_node("critic", self.critic.run)
+        workflow.add_node("supervisor", self._run_supervisor)
+        workflow.add_node("researcher", self._run_researcher)
+        workflow.add_node("analyst", self._run_analyst)
+        workflow.add_node("writer", self._run_writer)
+        workflow.add_node("critic", self._run_critic)
 
         # Set entry point
         workflow.set_entry_point("supervisor")

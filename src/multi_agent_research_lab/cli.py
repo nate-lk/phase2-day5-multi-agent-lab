@@ -5,6 +5,7 @@ from typing import Annotated
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
 
 from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.core.errors import StudentTodoError
@@ -13,12 +14,14 @@ from multi_agent_research_lab.core.state import ResearchState
 from multi_agent_research_lab.graph.workflow import MultiAgentWorkflow
 from multi_agent_research_lab.observability.logging import configure_logging
 from multi_agent_research_lab.services.llm_client import LLMClient
+from dotenv import load_dotenv
 
 app = typer.Typer(help="Multi-Agent Research Lab starter CLI")
 console = Console()
 
 
 def _init() -> None:
+    load_dotenv()
     settings = get_settings()
     configure_logging(settings.log_level)
 
@@ -57,7 +60,43 @@ def multi_agent(
     except StudentTodoError as exc:
         console.print(Panel.fit(str(exc), title="Expected TODO", style="yellow"))
         raise typer.Exit(code=2) from exc
+    
+    # Print JSON Result
     console.print(result.model_dump_json(indent=2))
+
+    # Print Trace Summary Table
+    if result.agent_results:
+        table = Table(title="Agent Execution & Data Flow", show_header=True, header_style="bold cyan")
+        table.add_column("Seq", style="dim")
+        table.add_column("Agent", style="bold")
+        table.add_column("Action / Data Flow", ratio=1)
+        table.add_column("Duration (s)", justify="right")
+
+        # Map agent results to durations from the trace list if available
+        # Note: both lists are sequential
+        for i, res in enumerate(result.agent_results):
+            duration_str = "N/A"
+            if i < len(result.trace):
+                duration = result.trace[i].get("payload", {}).get("duration_seconds")
+                duration_str = f"{duration:.2f}" if duration is not None else "N/A"
+            
+            # Extract action summary from metadata or content
+            action = res.content.split("\n")[0][:100] + "..."
+            if res.agent == "supervisor":
+                next_node = res.metadata.get("next_agent", "done")
+                action = f"Decided next node: [bold yellow]{next_node}[/bold yellow] ➔"
+            elif res.agent == "researcher":
+                action = f"Gathered [green]{res.metadata.get('source_count', 0)}[/green] sources and wrote notes."
+            elif res.agent == "analyst":
+                action = "Synthesized research into structured claims and insights."
+            elif res.agent == "writer":
+                action = "Drafted the final answer for the target audience."
+            elif res.agent == "critic":
+                action = "Performed fact-check and quality review."
+
+            table.add_row(str(i + 1), res.agent.upper(), action, duration_str)
+
+        console.print(table)
 
 
 @app.command()
