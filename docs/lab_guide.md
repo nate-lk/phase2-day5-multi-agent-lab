@@ -1,14 +1,12 @@
 # Lab Guide: Multi-Agent Research System
 
 ## Scenario
-
 Bạn cần xây dựng một research assistant có thể nhận câu hỏi dài, tìm thông tin, phân tích và viết câu trả lời cuối cùng. Lab yêu cầu so sánh hai cách làm:
 
 1. **Single-agent baseline**: một agent làm toàn bộ.
 2. **Multi-agent workflow**: Supervisor điều phối Researcher, Analyst, Writer.
 
 ## Quy tắc quan trọng
-
 - Không thêm agent nếu không có lý do rõ ràng.
 - Mỗi agent phải có responsibility riêng.
 - Shared state phải đủ rõ để debug.
@@ -16,62 +14,23 @@ Bạn cần xây dựng một research assistant có thể nhận câu hỏi dà
 - Phải benchmark, không chỉ nhìn output bằng cảm tính.
 
 ## Milestone 1: Baseline
-
-File gợi ý:
-
-- `src/multi_agent_research_lab/cli.py`
-- `src/multi_agent_research_lab/services/llm_client.py`
-
-TODO(student): thay baseline placeholder bằng một call LLM thật.
+✅ **Completed**: Single-agent implementation is available via `python -m multi_agent_research_lab.cli baseline`.
 
 ## Milestone 2: Supervisor
-
-File gợi ý:
-
-- `src/multi_agent_research_lab/agents/supervisor.py`
-- `src/multi_agent_research_lab/graph/workflow.py`
-
-TODO(student): implement routing policy.
-
-Gợi ý câu hỏi thiết kế:
-
-- Khi nào gọi Researcher?
-- Khi nào gọi Analyst?
-- Khi nào gọi Writer?
-- Khi nào stop?
-- Nếu agent fail thì retry hay fallback?
+✅ **Completed**: Routing policy is implemented in `supervisor.py` using a state-based decision logic.
 
 ## Milestone 3: Worker agents
-
-File gợi ý:
-
-- `agents/researcher.py`
-- `agents/analyst.py`
-- `agents/writer.py`
-
-TODO(student): implement từng worker.
+✅ **Completed**: `ResearcherAgent`, `AnalystAgent`, and `WriterAgent` are implemented with specialized prompts and tool access.
 
 ## Milestone 4: Trace và benchmark
-
-File gợi ý:
-
-- `observability/tracing.py`
-- `evaluation/benchmark.py`
-- `evaluation/report.py`
-
-Benchmark tối thiểu:
-
-| Metric | Cách đo gợi ý |
-|---|---|
-| Latency | wall-clock time |
-| Cost | token usage hoặc provider usage |
-| Quality | rubric 0-10 do peer review |
-| Citation coverage | số claims có source / tổng claims chính |
-| Failure rate | số query fail / tổng query |
+✅ **Completed**: Automated benchmarking system compares single vs. multi-agent across Latency, Cost, and Quality.
 
 ## Exit ticket
 
-Mỗi nhóm trả lời 2 câu:
+**1. Case nào nên dùng multi-agent? Vì sao?**
+- **Nghiên cứu chuyên sâu (In-depth research)**: Khi bài toán đòi hỏi nhiều bước xử lý riêng biệt (tìm kiếm, đối soát, viết lách). Chia nhỏ task giúp giảm tải context cho LLM và cho phép kiểm soát chất lượng (guardrails) ở từng giai đoạn.
+- **Quy trình cần sự khách quan (Objective review)**: Khi cần một agent khác (như Critic) để phản biện hoặc kiểm tra chéo (hallucination check) kết quả của agent trước đó.
 
-1. Case nào nên dùng multi-agent? Vì sao?
-2. Case nào không nên dùng multi-agent? Vì sao?
+**2. Case nào không nên dùng multi-agent? Vì sao?**
+- **Task đơn giản (Low complexity)**: Các yêu cầu có thể trả lời trực tiếp trong 1 prompt (ví dụ: "Thủ đô của Pháp là gì?"). Dùng multi-agent sẽ gây lãng phí latency và tiền bạc (token cost).
+- **Yêu cầu phản hồi thời gian thực (Real-time latency)**: Khi người dùng cần câu trả lời ngay lập tức. Multi-agent có độ trễ cao do phải thực hiện nhiều call LLM tuần tự.
